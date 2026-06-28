@@ -111,6 +111,17 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
+    // Password validation
+    const hasLowerCase = /[a-z]/.test(cleanPass);
+    const hasUpperCase = /[A-Z]/.test(cleanPass);
+    const hasNumber = /\d/.test(cleanPass);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(cleanPass);
+
+    if (!hasLowerCase || !hasUpperCase || !hasNumber || !hasSpecialChar) {
+      setError("Password must contain at least 1 uppercase, 1 lowercase, 1 number, and 1 special character.");
+      return;
+    }
+
     const users = getRegisteredUsers();
     const exists = users.some((u: any) => u && typeof u.username === "string" && u.username.toLowerCase() === cleanUser);
 

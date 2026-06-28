@@ -82,7 +82,7 @@ export const TopNav = () => {
   return (
     <div className="h-16 flex items-center justify-between border-b border-white/5 bg-[#0a0a0a]/80 backdrop-blur-md px-4 md:px-6 z-50 sticky top-0">
       
-      <div className="flex items-center gap-3 w-full max-w-md">
+      <div className="flex items-center gap-3 flex-1 max-w-xs md:max-w-md">
         {/* Mobile Hamburger Trigger */}
         <button 
           onClick={() => setShowMobileMenu(!showMobileMenu)}
@@ -223,7 +223,9 @@ export const TopNav = () => {
                 <button 
                   onClick={() => {
                     setShowProfile(false);
+                    localStorage.removeItem("sre_authenticated");
                     alert("Logged out successfully from session.");
+                    window.location.reload();
                   }}
                   className="flex items-center gap-2 text-xs text-rose-400 hover:text-rose-300 p-2 rounded-lg hover:bg-rose-500/10 transition-colors text-left"
                 >
