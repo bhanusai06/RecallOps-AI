@@ -1,0 +1,13 @@
+Most AI agents run with a severe case of stateless amnesia. They forget prior resolutions and burn through expensive API budgets re-analyzing the same errors.
+
+We built RecallOps AI to fix this. It acts as a self-improving, budget-aware memory layer for incident response using Hindsight and cascadeflow.
+
+Key learnings from this architecture:
+- Don't pollute the index: We use a Reflection scoring gate (specificity & confidence) to reject low-quality playbooks.
+- Scrub telemetry: UUIDs, container IDs, and PII must be normalized (<UUID>, <IP>) to allow clean memory recall.
+- Route dynamically: If memory confidence is >=94%, cascadeflow drops the model to Gemini-Flash. If it's a 99% match, it bypasses the LLM entirely.
+- Result: Day 3 incidents resolve in 48ms at zero API cost.
+
+Check out the full system: https://github.com/vectorize-io/hindsight
+
+#AIAgents #AgentMemory #Hindsight #cascadeflow #LLM
