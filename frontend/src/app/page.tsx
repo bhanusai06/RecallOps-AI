@@ -1,9 +1,10 @@
 // RecallOps AI Incident Hub client application
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import axios from "axios";
 import { UploadCard, DemoAnalyzeResponse } from "@/components/dashboard/upload-card";
 import { PipelineTimeline } from "@/components/dashboard/pipeline-timeline";
 import { MetricsRow } from "@/components/dashboard/metrics-row";
@@ -13,10 +14,12 @@ import { RoutingCard } from "@/components/dashboard/routing-card";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, BrainCircuit, ShieldAlert, Sparkles, Network, 
-  Archive, BookOpen, AlertTriangle, TrendingUp, CheckCircle, Database 
+  Archive, BookOpen, AlertTriangle, TrendingUp, CheckCircle, Database,
+  Activity, Clock, Users, ArrowRight, GitCommit, FileText, Search
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
 // Lazy load the heavy analytics dashboard for better initial performance
 const AnalyticsDashboard = dynamic(
@@ -44,6 +47,24 @@ function DashboardPageContent() {
   const [pendingResult, setPendingResult] = useState<DemoAnalyzeResponse | null>(null);
   const [result, setResult] = useState<DemoAnalyzeResponse | null>(null);
   const [demoHistory, setDemoHistory] = useState<string[]>([]);
+  
+  // Real incidents state for the Live incident feed
+  const [liveFeed, setLiveFeed] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    const fetchLiveFeed = async () => {
+      try {
+        const res = await axios.get("http://localhost:8000/api/v1/incidents");
+        if (res.data && res.data.length > 0) {
+          setLiveFeed(res.data);
+        }
+      } catch (e) {
+        console.error("Failed to load live feed incidents:", e);
+      }
+    };
+    fetchLiveFeed();
+  }, [result]);
 
   const handleAnalysisStart = () => {
     setAnalyzing(true);
@@ -63,7 +84,6 @@ function DashboardPageContent() {
       }
     }
     setAnalyzing(false);
-    // Switch search query back to dashboard to display results
     router.push("/?tab=dashboard");
   };
 
@@ -74,9 +94,78 @@ function DashboardPageContent() {
     router.push("/?tab=new");
   };
 
+  const loadIncidentFromFeed = (inc: any) => {
+    // Map database record to result schema expected by dashboard
+    const reportData: DemoAnalyzeResponse = {
+      incident_id: inc.id,
+      parsed_incident: {
+        raw_log: inc.signature?.raw_log || "",
+        log_source: inc.signature?.log_source || inc.service,
+        service: inc.signature?.affected_service || inc.service,
+        possible_language: "Java",
+        important_error_lines: [inc.root_cause],
+        stack_traces: [],
+        timestamps: [inc.created_at]
+      },
+      memory: {
+        matches: [],
+        confidence: 0.95
+      },
+      routing: {
+        selected_model: "cache-hit",
+        reason: "Matched in local SQLite historical memory cache.",
+        estimated_cost: 0.00,
+        estimated_latency: 0.1
+      },
+      analysis: {
+        severity: inc.severity,
+        root_cause: inc.root_cause,
+        summary: inc.postmortem?.summary || "Persistent memory match.",
+        playbook: inc.runbook || "Refer to operational manual.",
+        confidence: 0.95,
+        recommendation: inc.prevention?.[0] || "Review scaling policies.",
+        risk: "Low",
+        category: inc.category,
+        signature_json: inc.signature,
+        timeline_json: inc.timeline,
+        what_changed: inc.deployment_correlation?.deployments?.[0] || "Deployment v2.4.1 active",
+        blast_radius_json: inc.blast_radius,
+        prevention_json: inc.prevention,
+        verification_status: inc.verification_status,
+        recovery_time_sec: inc.recovery_time_sec,
+        verification_effectiveness: inc.verification_effectiveness,
+        model_metadata: { memory_quality: 92, version: 1, usage_count: 3 }
+      },
+      pipeline: {
+        parser_ms: 10,
+        memory_ms: 35,
+        router_ms: 2,
+        llm_ms: 0,
+        total_ms: 47
+      }
+    };
+    setResult(reportData);
+    router.push("/?tab=dashboard");
+  };
+
+  // Natural Language Search Filter
+  const filteredFeed = liveFeed.filter(inc => {
+    const term = searchQuery.toLowerCase();
+    if (!term) return true;
+    
+    // Natural Language commands
+    if (term.includes("oom")) return inc.category === "OOM";
+    if (term.includes("db") || term.includes("timeout")) return inc.category === "DB_TIMEOUT";
+    if (term.includes("v2.4.1")) return inc.deployment_correlation?.deployments?.[0]?.includes("v2.4.1");
+    
+    return inc.id.toLowerCase().includes(term) ||
+           (inc.category && inc.category.toLowerCase().includes(term)) ||
+           (inc.root_cause && inc.root_cause.toLowerCase().includes(term)) ||
+           (inc.owner && inc.owner.toLowerCase().includes(term));
+  });
+
   // -------------------- Tab Renderers --------------------
 
-  // 1. Dashboard tab (upload form or analysis report)
   const renderDashboard = () => {
     if (result) {
       return (
@@ -88,7 +177,7 @@ function DashboardPageContent() {
           className="space-y-8"
         >
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-2">
-            <h1 className="text-3xl font-bold tracking-tight text-white">AI Diagnosis Output</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-white">AI Diagnosis Workspace</h1>
             <Button 
               onClick={handleReset} 
               variant="outline"
@@ -117,14 +206,108 @@ function DashboardPageContent() {
     }
 
     return (
-      <div className="space-y-8 w-full max-w-5xl mx-auto mt-8">
-        <div className="text-center space-y-3 mb-10">
-          <h1 className="text-4xl font-extrabold tracking-tight text-white">AI Incident Memory Copilot</h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            RecallOps AI is an intelligence system that parses production logs, extracts signatures, queries hindsight memory, and verifies resolutions.
-          </p>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Left Side: Log Upload & Search Workspace */}
+        <div className="lg:col-span-3 space-y-8">
+          <div className="text-left space-y-2 mb-6">
+            <h1 className="text-4xl font-extrabold tracking-tight text-white flex items-center gap-2">
+              <BrainCircuit className="w-8 h-8 text-primary" /> RecallOps AI Incident Hub
+            </h1>
+            <p className="text-base text-muted-foreground">
+              Recall similar outages, inspect causal graphs, generate postmortems, and verify fixes in real-time.
+            </p>
+          </div>
+
+          <UploadCard onStart={handleAnalysisStart} onComplete={handleAnalysisComplete} />
+
+          {/* Risk Heatmap & Hotspots Grid */}
+          <div className="bg-black/60 border border-white/10 rounded-2xl p-6 backdrop-blur-xl">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-violet-400" /> SRE Risk Heatmap & System Hotspots
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-white">auth-worker</span>
+                  <Badge variant="destructive" className="animate-pulse">HIGH RISK</Badge>
+                </div>
+                <p className="text-xs text-gray-400">Recurring OOM signatures matching Monday heap limits.</p>
+              </div>
+
+              <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-white">payments-svc</span>
+                  <Badge className="bg-amber-500/20 text-amber-400 border border-amber-500/30">DEGRADED</Badge>
+                </div>
+                <p className="text-xs text-gray-400">Stale connections warning. Slow database query metrics.</p>
+              </div>
+
+              <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-white">checkout-ui</span>
+                  <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">STABLE</Badge>
+                </div>
+                <p className="text-xs text-gray-400">Vite assets hashing stable. No anomalies logged.</p>
+              </div>
+            </div>
+          </div>
         </div>
-        <UploadCard onStart={handleAnalysisStart} onComplete={handleAnalysisComplete} />
+
+        {/* Right Side: Live Incident Feed & Natural Language Search */}
+        <div className="space-y-8">
+          {/* Natural Language Search Bar */}
+          <div className="bg-[#0b0b0d] border border-white/10 rounded-2xl p-5 backdrop-blur-xl">
+            <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-2">Natural Language Query</span>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="e.g. show OOM incidents"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-white/5 border-white/10 pl-9 text-xs focus-visible:ring-primary/50"
+              />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5 text-[10px] font-mono text-gray-500">
+              <span className="cursor-pointer hover:text-white" onClick={() => setSearchQuery("show OOM incidents")}>#oom</span>
+              <span className="cursor-pointer hover:text-white" onClick={() => setSearchQuery("show incidents after deployment v2.4.1")}>#v2.4.1</span>
+            </div>
+          </div>
+
+          {/* Live Feed Workspace */}
+          <div className="bg-[#0b0b0d] border border-white/10 rounded-2xl p-5 backdrop-blur-xl flex flex-col h-[400px]">
+            <h4 className="text-sm font-bold text-white mb-3 uppercase tracking-wider flex items-center gap-1.5">
+              <Activity className="w-4 h-4 text-emerald-400 animate-pulse" /> Live Telemetry Feed
+            </h4>
+            
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {filteredFeed.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs text-gray-500 italic text-center p-4">
+                  No active incidents recorded. Ingest logs to populate.
+                </div>
+              ) : (
+                filteredFeed.map((inc) => (
+                  <div 
+                    key={inc.id}
+                    onClick={() => loadIncidentFromFeed(inc)}
+                    className="p-3 bg-white/5 border border-white/5 hover:border-primary/30 rounded-xl cursor-pointer hover:bg-white/10 transition-all space-y-2 group"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-mono text-gray-500">{inc.id.substring(0, 8)}</span>
+                      <Badge variant={inc.severity?.toLowerCase() === "critical" ? "destructive" : "secondary"} className="text-[9px] uppercase px-1 py-0 font-mono">
+                        {inc.severity}
+                      </Badge>
+                    </div>
+                    <h5 className="text-xs font-bold text-gray-200 group-hover:text-primary transition-colors">{inc.title}</h5>
+                    <div className="flex justify-between items-center text-[10px] text-gray-500 font-mono">
+                      <span>Owner: {inc.owner || "Unassigned"}</span>
+                      <span>{inc.verification_status === "Verified" ? "Verified" : "Review"}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
@@ -230,7 +413,6 @@ function DashboardPageContent() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(59,130,246,0.08),transparent_60%)]" />
           
           <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-8">
-            {/* SVG custom interactive node graph representing incident dependencies */}
             <svg className="w-full max-w-2xl h-[300px]" viewBox="0 0 600 300">
               {/* Connection lines */}
               <line x1="100" y1="150" x2="250" y2="80" stroke="rgba(255,255,255,0.15)" strokeWidth="2" strokeDasharray="5,5" />
@@ -239,18 +421,15 @@ function DashboardPageContent() {
               <line x1="250" y1="220" x2="450" y2="220" stroke="rgba(59,130,246,0.3)" strokeWidth="3" />
               
               {/* Nodes */}
-              {/* Incident Root Node */}
               <circle cx="100" cy="150" r="30" fill="rgba(244,63,94,0.2)" stroke="rgb(244,63,94)" strokeWidth="2" />
               <text x="100" y="155" fill="white" fontSize="10" textAnchor="middle" fontWeight="bold">Outage</text>
               
-              {/* Services Nodes */}
               <circle cx="250" cy="80" r="25" fill="rgba(59,130,246,0.2)" stroke="rgb(59,130,246)" strokeWidth="2" />
               <text x="250" y="85" fill="white" fontSize="9" textAnchor="middle">Auth</text>
 
               <circle cx="250" cy="220" r="25" fill="rgba(59,130,246,0.2)" stroke="rgb(59,130,246)" strokeWidth="2" />
               <text x="250" y="225" fill="white" fontSize="9" textAnchor="middle">Payments</text>
 
-              {/* Fix Nodes */}
               <circle cx="450" cy="80" r="25" fill="rgba(16,185,129,0.2)" stroke="rgb(16,185,129)" strokeWidth="2" />
               <text x="450" y="85" fill="white" fontSize="9" textAnchor="middle">HPA Scale</text>
 

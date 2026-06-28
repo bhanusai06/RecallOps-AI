@@ -28,6 +28,14 @@ class VerifyRequest(BaseModel):
     status: str
     recovery_time_sec: int
     effectiveness: str
+    owner: Optional[str] = None
+    feedback_notes: Optional[str] = None
+
+class IngestRequest(BaseModel):
+    source: str  # "kubernetes", "prometheus", "grafana", "elastic", "github", "slack", "jira"
+    payload: str
+    service: Optional[str] = None
+    environment: Optional[str] = "production"
 
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_incident(
@@ -42,13 +50,9 @@ async def analyze_incident(
         raise AppException("Log content cannot be empty.", status_code=400)
 
     logger.info("Starting pipeline execution")
-    
-    # Run Orchestrator Pipeline (passing the db session for persistence & local retrieval)
     report = await orchestrator.run_incident_pipeline(request.log, db=db)
-    
     logger.info("Pipeline execution complete")
     
-    # Map to expected AnalyzeResponse schema
     return AnalyzeResponse(
         incident_id=report.parsed_incident.signature.get("timestamp", str(uuid.uuid4())) if report.parsed_incident.signature else str(uuid.uuid4()),
         parsed_incident=report.parsed_incident.model_dump(),
@@ -83,6 +87,31 @@ async def analyze_incident(
         ),
         pipeline=PipelineTimingSchema(**report.pipeline_timing.model_dump())
     )
+
+@router.post("/ingest")
+async def ingest_logs(
+    request: IngestRequest,
+    orchestrator: IncidentOrchestrator = Depends(get_incident_orchestrator),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Ingests live logs/events from external platforms (Kubernetes, Prometheus, Grafana, Slack, Jira, Elastic, GitHub).
+    """
+    logger.info(f"Ingesting live telemetry event from {request.source}")
+    
+    # Prefix log with source metadata for pipeline parser context
+    ingested_log = f"[{request.source.upper()} INGESTION EVENT] Env: {request.environment} | Service: {request.service or 'unknown'}\n{request.payload}"
+    
+    # Run log analysis pipeline
+    report = await orchestrator.run_incident_pipeline(ingested_log, db=db)
+    
+    return {
+        "status": "success",
+        "source": request.source,
+        "incident_id": report.parsed_incident.signature.get("timestamp", str(uuid.uuid4())) if report.parsed_incident.signature else str(uuid.uuid4()),
+        "category": report.analysis_result.category,
+        "root_cause": report.analysis_result.root_cause
+    }
 
 @router.get("", response_model=List[dict])
 async def list_incidents(
@@ -123,11 +152,34 @@ async def list_incidents(
                 prev = json.loads(inc.prevention_json)
             except:
                 pass
-
         links = []
         if inc.knowledge_links:
             try:
                 links = json.loads(inc.knowledge_links)
+            except:
+                pass
+        pm = {}
+        if inc.postmortem_json:
+            try:
+                pm = json.loads(inc.postmortem_json)
+            except:
+                pass
+        dep = {}
+        if inc.deployment_correlation_json:
+            try:
+                dep = json.loads(inc.deployment_correlation_json)
+            except:
+                pass
+        collab = {}
+        if inc.collaboration_notes_json:
+            try:
+                collab = json.loads(inc.collaboration_notes_json)
+            except:
+                pass
+        feedback = {}
+        if inc.feedback_json:
+            try:
+                feedback = json.loads(inc.feedback_json)
             except:
                 pass
 
@@ -147,9 +199,46 @@ async def list_incidents(
             "verification_status": inc.verification_status,
             "recovery_time_sec": inc.recovery_time_sec,
             "verification_effectiveness": inc.verification_effectiveness,
-            "knowledge_links": links
+            "knowledge_links": links,
+            "owner": inc.owner or collab.get("owner", "Unassigned"),
+            "postmortem": pm,
+            "runbook": inc.runbook_markdown or "",
+            "deployment_correlation": dep,
+            "collaboration_notes": collab,
+            "feedback": feedback
         })
     return records
+
+@router.get("/{incident_id}/postmortem")
+async def get_postmortem(
+    incident_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    stmt = select(Incident).filter(Incident.id == incident_id)
+    res = await db.execute(stmt)
+    inc = res.scalars().first()
+    if not inc:
+        raise AppException("Incident not found.", status_code=404)
+        
+    pm = {}
+    if inc.postmortem_json:
+        try:
+            pm = json.loads(inc.postmortem_json)
+        except:
+            pass
+    return pm
+
+@router.get("/{incident_id}/runbook")
+async def get_runbook(
+    incident_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    stmt = select(Incident).filter(Incident.id == incident_id)
+    res = await db.execute(stmt)
+    inc = res.scalars().first()
+    if not inc:
+        raise AppException("Incident not found.", status_code=404)
+    return {"runbook": inc.runbook_markdown or ""}
 
 @router.post("/{incident_id}/verify")
 async def verify_incident(
@@ -158,7 +247,7 @@ async def verify_incident(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Verifies the incident recovery metrics and stores the effectiveness review.
+    Verifies the incident recovery metrics and stores the feedback loop review.
     """
     stmt = select(Incident).filter(Incident.id == incident_id)
     res = await db.execute(stmt)
@@ -171,11 +260,25 @@ async def verify_incident(
     incident.recovery_time_sec = payload.recovery_time_sec
     incident.verification_effectiveness = payload.effectiveness
     
+    if payload.owner:
+        incident.owner = payload.owner
+        
+    # Store feedback details
+    fb_data = {
+        "status": payload.status,
+        "effectiveness": payload.effectiveness,
+        "recovery_time_sec": payload.recovery_time_sec,
+        "owner": payload.owner,
+        "notes": payload.feedback_notes or "RCA verified successfully."
+    }
+    incident.feedback_json = json.dumps(fb_data)
+    
     await db.commit()
     return {
         "status": "success",
         "incident_id": incident_id,
         "verification_status": incident.verification_status,
         "recovery_time_sec": incident.recovery_time_sec,
-        "verification_effectiveness": incident.verification_effectiveness
+        "verification_effectiveness": incident.verification_effectiveness,
+        "owner": incident.owner
     }

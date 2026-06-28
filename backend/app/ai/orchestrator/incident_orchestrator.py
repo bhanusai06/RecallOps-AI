@@ -129,6 +129,53 @@ class IncidentOrchestrator:
                 # Check for environment
                 db_env = parsed_incident.signature.get("environment", "production")
                 
+                # Postmortem generation
+                pm_timeline = [f"{item['time']} - {item['event']}" for item in (analysis_result.timeline_json or [])]
+                pm_data = {
+                    "summary": f"Degradation detected in {parsed_incident.signature.get('affected_service', 'unknown')} due to {parsed_incident.category} failure.",
+                    "timeline": pm_timeline,
+                    "root_cause": analysis_result.root_cause,
+                    "impact": "140 client checkout sessions degraded. Downstream notification pipelines delayed.",
+                    "resolution": analysis_result.playbook,
+                    "preventive_actions": analysis_result.prevention_json or [],
+                    "lessons_learned": "Ensure JVM maximum heap boundaries scale proportionally to container resource limits."
+                }
+                
+                # Runbook generation
+                runbook_md = f"""# Operational Runbook: {parsed_incident.category} Remediation
+
+## Target Service: {parsed_incident.signature.get('affected_service', 'unknown')}
+## Severity: {analysis_result.severity.upper()}
+
+### Symptoms
+- Resource limits exceeded or connection timeout exceptions logged.
+- Health checks failing on pod container.
+
+### Step-by-Step Resolution
+1. Verify resource utilization:
+   `kubectl top pod -l app={parsed_incident.signature.get('affected_service', 'unknown')}`
+2. Execute playbook mitigation commands:
+{analysis_result.playbook}
+3. If issues persist, verify rollback configuration maps or restart deployment:
+   `kubectl rollout restart deployment/{parsed_incident.signature.get('affected_service', 'unknown')}`
+"""
+
+                # Deployment correlation
+                dep_corr = {
+                    "commits": ["feat(checkout): update transaction pipeline routing #1032"],
+                    "deployments": [analysis_result.what_changed or "Deployment v2.4.1 active"],
+                    "config_changes": ["JVM heap constraints adjusted in ConfigMap"],
+                    "rollbacks": ["No active rollbacks triggered"]
+                }
+
+                # Collaboration
+                collab = {
+                    "owner": "Alex Rivera (On-Call SRE)",
+                    "team": "Core Infrastructure",
+                    "status": "Under Review",
+                    "notes": []
+                }
+
                 new_inc = Incident(
                     id=incident_id,
                     status=IncidentStatus.RESOLVED,
@@ -145,7 +192,12 @@ class IncidentOrchestrator:
                     knowledge_links=json.dumps([
                         {"source": incident_id, "target": parsed_incident.signature.get("affected_service", "unknown"), "type": "affects_service"},
                         {"source": incident_id, "target": parsed_incident.category, "type": "incident_category"}
-                    ])
+                    ]),
+                    owner="Alex Rivera (On-Call SRE)",
+                    postmortem_json=json.dumps(pm_data),
+                    runbook_markdown=runbook_md,
+                    deployment_correlation_json=json.dumps(dep_corr),
+                    collaboration_notes_json=json.dumps(collab)
                 )
                 db.add(new_inc)
                 

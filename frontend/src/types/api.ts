@@ -37,6 +37,7 @@ export interface AnalysisInfo {
   verification_status?: string;
   recovery_time_sec?: number;
   verification_effectiveness?: string;
+  model_metadata?: any;
 }
 
 export interface PipelineTiming {

@@ -36,6 +36,12 @@ class Incident(Base):
     knowledge_links = Column(String, nullable=True)
     recovery_time_sec = Column(Integer, nullable=True)
     verification_effectiveness = Column(String, nullable=True)
+    owner = Column(String, nullable=True)
+    postmortem_json = Column(String, nullable=True)
+    runbook_markdown = Column(String, nullable=True)
+    feedback_json = Column(String, nullable=True)
+    deployment_correlation_json = Column(String, nullable=True)
+    collaboration_notes_json = Column(String, nullable=True)
     
     uploaded_log = relationship("UploadedLog", back_populates="incident", uselist=False)
     resolution = relationship("Resolution", back_populates="incident", uselist=False)
