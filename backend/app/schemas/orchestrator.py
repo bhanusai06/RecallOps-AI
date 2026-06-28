@@ -13,6 +13,10 @@ class MemoryMatchSchema(BaseModel):
     root_cause: str
     playbook: str
     engineer_notes: str
+    category: Optional[str] = None
+    environment: Optional[str] = None
+    severity: Optional[str] = None
+    signature: Optional[dict] = None
 
 class MemorySchema(BaseModel):
     matches: List[MemoryMatchSchema]
@@ -32,6 +36,15 @@ class AnalysisSchema(BaseModel):
     confidence: float
     recommendation: str
     risk: str
+    category: Optional[str] = "UNKNOWN"
+    signature_json: Optional[dict] = None
+    timeline_json: Optional[List[dict]] = None
+    what_changed: Optional[str] = None
+    blast_radius_json: Optional[dict] = None
+    prevention_json: Optional[List[str]] = None
+    verification_status: Optional[str] = "Unverified"
+    recovery_time_sec: Optional[int] = None
+    verification_effectiveness: Optional[str] = None
     model_metadata: Optional[dict] = Field(None, serialization_alias="model_extra")
 
 class PipelineTimingSchema(BaseModel):

@@ -21,6 +21,21 @@ class Incident(Base):
     status = Column(Enum(IncidentStatus), default=IncidentStatus.UPLOADED, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
+    # New analytics & verification fields
+    title = Column(String, nullable=True)
+    category = Column(String, nullable=True)
+    root_cause = Column(String, nullable=True)
+    environment = Column(String, nullable=True)
+    severity = Column(String, nullable=True)
+    signature_json = Column(String, nullable=True)
+    embedding_vector = Column(String, nullable=True)
+    timeline_json = Column(String, nullable=True)
+    blast_radius_json = Column(String, nullable=True)
+    prevention_json = Column(String, nullable=True)
+    verification_status = Column(String, default="Unverified", nullable=True)
+    recovery_time_sec = Column(Integer, nullable=True)
+    verification_effectiveness = Column(String, nullable=True)
+    
     uploaded_log = relationship("UploadedLog", back_populates="incident", uselist=False)
     resolution = relationship("Resolution", back_populates="incident", uselist=False)
     notes = relationship("EngineerNote", back_populates="incident")

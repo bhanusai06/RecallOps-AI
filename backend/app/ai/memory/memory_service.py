@@ -6,7 +6,7 @@ class MockMemoryService(IMemoryService):
     """
     Mock implementation of Hindsight Memory Service.
     """
-    async def search_similar_incidents(self, parsed_incident: ParsedIncident) -> List[MemoryResult]:
+    async def search_similar_incidents(self, parsed_incident: ParsedIncident, db = None) -> List[MemoryResult]:
         log_lower = parsed_incident.raw_log.lower()
         if "strong" in log_lower:
             return [

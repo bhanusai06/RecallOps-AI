@@ -20,6 +20,18 @@ async def lifespan(app: FastAPI):
     # On Startup
     setup_logging()
     logger.info(f"Starting {settings.project_name} in {settings.app_env} mode (version {settings.version}).")
+    
+    # Auto-create tables for SQLite
+    try:
+        from app.database.session import engine
+        from app.models.base import Base
+        import app.models.incident # registers tables
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database schema synchronized successfully.")
+    except Exception as e:
+        logger.error(f"Failed to synchronize database schema: {e}")
+        
     logger.info("Mock database connectivity check passed.")
     logger.info("Application ready.")
     

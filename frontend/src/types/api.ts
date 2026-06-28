@@ -28,6 +28,15 @@ export interface AnalysisInfo {
   confidence: number;
   recommendation: string;
   risk: string;
+  category?: string;
+  signature_json?: any;
+  timeline_json?: any[];
+  what_changed?: string;
+  blast_radius_json?: any;
+  prevention_json?: string[];
+  verification_status?: string;
+  recovery_time_sec?: number;
+  verification_effectiveness?: string;
 }
 
 export interface PipelineTiming {

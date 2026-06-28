@@ -9,6 +9,8 @@ class ParsedIncident(BaseModel):
     important_error_lines: List[str]
     stack_traces: List[str]
     timestamps: List[str]
+    category: Optional[str] = "UNKNOWN"
+    signature: Optional[dict] = None
 
 class MemoryResult(BaseModel):
     incident_id: str
@@ -16,6 +18,10 @@ class MemoryResult(BaseModel):
     root_cause: str
     playbook: str
     engineer_notes: str
+    category: Optional[str] = None
+    environment: Optional[str] = None
+    severity: Optional[str] = None
+    signature: Optional[dict] = None
 
 class RoutingDecision(BaseModel):
     selected_model: str
@@ -32,6 +38,15 @@ class AnalysisResult(BaseModel):
     confidence: float
     recommendation: str
     risk: str
+    category: Optional[str] = "UNKNOWN"
+    signature_json: Optional[dict] = None
+    timeline_json: Optional[List[dict]] = None
+    what_changed: Optional[str] = None
+    blast_radius_json: Optional[dict] = None
+    prevention_json: Optional[List[str]] = None
+    verification_status: Optional[str] = "Unverified"
+    recovery_time_sec: Optional[int] = None
+    verification_effectiveness: Optional[str] = None
     model_metadata: Optional[dict] = None
 
 class PipelineTiming(BaseModel):

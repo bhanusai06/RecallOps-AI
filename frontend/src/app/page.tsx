@@ -134,7 +134,7 @@ export default function DashboardPage() {
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-8">
-                <AnalysisCard data={result.analysis} />
+                <AnalysisCard data={result.analysis} incidentId={result.incident_id} />
               </div>
               <div className="space-y-8">
                 <RoutingCard data={result.routing} />
