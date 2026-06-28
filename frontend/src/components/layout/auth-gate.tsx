@@ -181,7 +181,7 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
         </div>
 
         <div className="flex items-center gap-4">
-          <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 bg-emerald-500/5 text-xs">
+          <Badge variant="outline" className="hidden md:inline-flex border-emerald-500/30 text-emerald-400 bg-emerald-500/5 text-xs">
             ● System Public Dashboard
           </Badge>
           <Button 
@@ -191,8 +191,9 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
             }}
             className="bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs h-9 px-4 shadow-[0_0_15px_rgba(124,58,237,0.4)]"
           >
-            <LogIn className="w-4 h-4 mr-2" />
-            SRE Terminal Login
+            <LogIn className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">SRE Terminal Login</span>
+            <span className="sm:hidden">Login</span>
           </Button>
         </div>
       </header>
@@ -210,14 +211,14 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
               Authenticate to access live telemetry feeds, upload Kubernetes cluster logs, visualize interactive outage timelines, and generate SRE playbooks.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <Button 
               variant="outline"
               onClick={() => {
                 setActiveForm("signup");
                 setShowLoginModal(true);
               }}
-              className="border-white/10 hover:bg-white/5 text-white font-extrabold px-5 h-11 text-xs"
+              className="border-white/10 hover:bg-white/5 text-white font-extrabold px-5 h-11 text-xs w-full sm:w-auto"
             >
               <UserPlus className="w-4 h-4 mr-2" /> Create Account
             </Button>
@@ -226,7 +227,7 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
                 setActiveForm("signin");
                 setShowLoginModal(true);
               }}
-              className="bg-white hover:bg-zinc-200 text-black font-extrabold px-6 h-11 text-xs"
+              className="bg-white hover:bg-zinc-200 text-black font-extrabold px-6 h-11 text-xs w-full sm:w-auto"
             >
               Access Terminal <ChevronRight className="w-4 h-4 ml-1" />
             </Button>

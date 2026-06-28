@@ -82,11 +82,11 @@ export const TopNav = () => {
   return (
     <div className="h-16 flex items-center justify-between border-b border-white/5 bg-[#0a0a0a]/80 backdrop-blur-md px-4 md:px-6 z-50 sticky top-0">
       
-      <div className="flex items-center gap-3 w-full max-w-md">
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 sm:max-w-md mr-2">
         {/* Mobile Hamburger Trigger */}
         <button 
           onClick={() => setShowMobileMenu(!showMobileMenu)}
-          className="lg:hidden p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors focus:outline-none"
+          className="lg:hidden p-2 -ml-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors focus:outline-none"
         >
           {showMobileMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
@@ -94,7 +94,7 @@ export const TopNav = () => {
         <div className="flex items-center w-full relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
           <Input 
-            placeholder="Search incident memory..." 
+            placeholder="Search..." 
             className="w-full bg-white/5 border-white/10 pl-9 focus-visible:ring-primary/50 text-sm h-9 rounded-full text-white"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -223,7 +223,12 @@ export const TopNav = () => {
                 <button 
                   onClick={() => {
                     setShowProfile(false);
-                    alert("Logged out successfully from session.");
+                    localStorage.removeItem("sre_authenticated");
+                    localStorage.removeItem("sre_name");
+                    localStorage.removeItem("sre_role");
+                    localStorage.removeItem("sre_team");
+                    localStorage.removeItem("sre_status");
+                    window.location.href = "/";
                   }}
                   className="flex items-center gap-2 text-xs text-rose-400 hover:text-rose-300 p-2 rounded-lg hover:bg-rose-500/10 transition-colors text-left"
                 >
