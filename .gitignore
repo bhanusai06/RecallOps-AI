@@ -2,11 +2,16 @@
 __pycache__/
 *.py[cod]
 *$py.class
-venv/
-.venv/
-Include/
-Lib/
-Scripts/
+/venv/
+/.venv/
+/Include/
+/Lib/
+/Scripts/
+/backend/venv/
+/backend/Include/
+/backend/Lib/
+/backend/Scripts/
+/backend/pyvenv.cfg
 pyvenv.cfg
 
 # Node
