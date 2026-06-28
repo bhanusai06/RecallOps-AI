@@ -43,6 +43,8 @@ function DashboardPageContent() {
   const router = useRouter();
   const currentTab = searchParams.get("tab") || "dashboard";
 
+  const viewId = searchParams.get("view_id");
+
   const [analyzing, setAnalyzing] = useState(false);
   const [pendingResult, setPendingResult] = useState<DemoAnalyzeResponse | null>(null);
   const [result, setResult] = useState<DemoAnalyzeResponse | null>(null);
@@ -51,6 +53,15 @@ function DashboardPageContent() {
   // Real incidents state for the Live incident feed
   const [liveFeed, setLiveFeed] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (viewId && liveFeed.length > 0) {
+      const match = liveFeed.find(inc => inc.id === viewId || inc.id.substring(0, 8) === viewId);
+      if (match) {
+        loadIncidentFromFeed(match);
+      }
+    }
+  }, [viewId, liveFeed]);
 
   useEffect(() => {
     const fetchLiveFeed = async () => {

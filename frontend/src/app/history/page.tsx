@@ -1,33 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, Filter, AlertTriangle, RefreshCw } from "lucide-react";
+import { Search, Filter, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const MOCK_HISTORY = [
-  { id: "inc-8931", date: "2026-06-27 14:32:01", service: "payment-api", env: "production", severity: "Critical", status: "Resolved", root_cause: "Connection pool exhausted" },
-  { id: "inc-8930", date: "2026-06-27 12:15:22", service: "auth-worker", env: "staging", severity: "Medium", status: "Resolved", root_cause: "JWKS token validation fail" },
-  { id: "inc-8929", date: "2026-06-26 23:45:10", service: "checkout-ui", env: "production", severity: "High", status: "Reviewing", root_cause: "Vite client assets hash mismatch" },
-  { id: "inc-8928", date: "2026-06-26 18:02:44", service: "notification-svc", env: "production", severity: "Low", status: "Resolved", root_cause: "SMTP gateway timeout" },
+  { id: "inc-8931", real_id: "inc-8931", date: "2026-06-27 14:32:01", service: "payment-api", env: "production", severity: "Critical", status: "Resolved", root_cause: "Connection pool exhausted" },
+  { id: "inc-8930", real_id: "inc-8930", date: "2026-06-27 12:15:22", service: "auth-worker", env: "staging", severity: "Medium", status: "Resolved", root_cause: "JWKS token validation fail" },
+  { id: "inc-8929", real_id: "inc-8929", date: "2026-06-26 23:45:10", service: "checkout-ui", env: "production", severity: "High", status: "Reviewing", root_cause: "Vite client assets hash mismatch" },
+  { id: "inc-8928", real_id: "inc-8928", date: "2026-06-26 18:02:44", service: "notification-svc", env: "production", severity: "Low", status: "Resolved", root_cause: "SMTP gateway timeout" },
 ];
 
 export default function HistoryPage() {
   const [incidents, setIncidents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
     const fetchHistory = async () => {
       try {
         const res = await axios.get("http://localhost:8000/api/v1/incidents");
         if (res.data && res.data.length > 0) {
-          // Map to local layout
           const mapped = res.data.map((inc: any) => ({
             id: inc.id.substring(0, 8),
+            real_id: inc.id,
             date: inc.created_at.replace("T", " ").substring(0, 19),
             service: inc.signature?.affected_service || "unknown",
             env: inc.environment || "production",
@@ -100,7 +102,11 @@ export default function HistoryPage() {
               </TableHeader>
               <TableBody>
                 {filteredIncidents.map((incident) => (
-                  <TableRow key={incident.id} className="border-white/10 hover:bg-white/5 cursor-pointer transition-colors group">
+                  <TableRow 
+                    key={incident.id} 
+                    onClick={() => router.push(`/?tab=dashboard&view_id=${incident.real_id}`)}
+                    className="border-white/10 hover:bg-white/5 cursor-pointer transition-colors group"
+                  >
                     <TableCell className="font-mono text-sm text-gray-300 group-hover:text-primary transition-colors">
                       {incident.id}
                     </TableCell>
