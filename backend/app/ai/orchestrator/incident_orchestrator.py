@@ -141,7 +141,11 @@ class IncidentOrchestrator:
                     timeline_json=json.dumps(analysis_result.timeline_json),
                     blast_radius_json=json.dumps(analysis_result.blast_radius_json),
                     prevention_json=json.dumps(analysis_result.prevention_json),
-                    verification_status="Unverified"
+                    verification_status="Unverified",
+                    knowledge_links=json.dumps([
+                        {"source": incident_id, "target": parsed_incident.signature.get("affected_service", "unknown"), "type": "affects_service"},
+                        {"source": incident_id, "target": parsed_incident.category, "type": "incident_category"}
+                    ])
                 )
                 db.add(new_inc)
                 

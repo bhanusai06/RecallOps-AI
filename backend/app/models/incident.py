@@ -33,6 +33,7 @@ class Incident(Base):
     blast_radius_json = Column(String, nullable=True)
     prevention_json = Column(String, nullable=True)
     verification_status = Column(String, default="Unverified", nullable=True)
+    knowledge_links = Column(String, nullable=True)
     recovery_time_sec = Column(Integer, nullable=True)
     verification_effectiveness = Column(String, nullable=True)
     

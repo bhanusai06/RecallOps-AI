@@ -124,6 +124,13 @@ async def list_incidents(
             except:
                 pass
 
+        links = []
+        if inc.knowledge_links:
+            try:
+                links = json.loads(inc.knowledge_links)
+            except:
+                pass
+
         records.append({
             "id": inc.id,
             "title": inc.title,
@@ -139,7 +146,8 @@ async def list_incidents(
             "prevention": prev,
             "verification_status": inc.verification_status,
             "recovery_time_sec": inc.recovery_time_sec,
-            "verification_effectiveness": inc.verification_effectiveness
+            "verification_effectiveness": inc.verification_effectiveness,
+            "knowledge_links": links
         })
     return records
 
