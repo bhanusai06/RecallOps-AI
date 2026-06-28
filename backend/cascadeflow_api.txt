@@ -1,0 +1,170 @@
+INIT:
+
+Initialize global harness settings and instrument detected SDKs.
+
+Reads configuration from (in priority order): explicit keyword arguments,
+environment variables (``CASCADEFLOW_HARNESS_*``), config file
+(``cascadeflow.yaml`` / ``cascadeflow.json``), and built-in defaults.
+
+When ``mode`` is ``"observe"`` or ``"enforce"``, patches the OpenAI and
+Anthropic Python SDKs (if installed) so that every ``chat.completions.create``
+/ ``messages.create`` call is intercepted for cost tracking, budget
+enforcement, compliance gating, and decision tracing.
+
+
+RUN:
+
+Create a scoped run context.
+
+Scope-level values override global init defaults for the scope only.
+
+
+AGENT:
+
+cascadeflow Agent v2.5 - FIXED: Cost Calculation with Telemetry Integration
+===========================================================================
+
+✅ Phase 2A: PreRouter for complexity-based routing (routing/)
+✅ Phase 2B: MetricsCollector for statistics tracking (telemetry/)
+✅ Phase 2C: TerminalVisualConsumer for UI feedback (interface/)
+✅ Phase 3: Tool Calling Support via ToolRouter (routing/)
+✅ v2.4: Intelligent streaming module routing (tools vs text)
+🆕 v2.5: CostCalculator integration - FIXES cost aggregation bug (Oct 20, 2025)
+
+NEW in v2.5: Proper Cost Calculation
+    - CostCalculator: Single source of truth for cost calculations
+    - Fixes bug where cascaded queries only showed draft cost
+    - Now correctly aggregates draft + verifier costs
+    - Clean separation: agent orchestrates, calculator computes
+
+Cost Calculation Flow:
+    1. Agent executes query (cascade or direct)
+    2. CostCalculator.calculate(spec_result) extracts costs
+    3. Returns CostBreakdown with:
+       - draft_cost: Individual model costs
+       - verifier_cost: Verifier model cost (if called)
+       - total_cost: Properly aggregated (draft + verifier)
+       - cost_saved: Savings vs big-only approach
+    4. Agent uses breakdown to build CascadeResult
+
+Architecture Overview:
+    1. PreRouter decides complexity-based routing (routing/)
+    2. ToolRouter filters tool-capable models (routing/)
+    3. Agent detects tools parameter
+    4. IF tools → ToolStreamManager (streaming/tools.py)
+       ELSE → StreamManager (streaming/base.py)
+    5. CostCalculator computes costs from results (telemetry/) 🆕
+    6. MetricsCollector tracks ALL statistics (telemetry/)
+    7. TerminalVisualConsumer provides UI feedback (interface/)
+
+Key Features:
+    - Automatic streaming module selection (text vs tools)
+    - Tool usage tracking in telemetry
+    - Accurate cost calculation and aggregation 🆕
+    - Full backward compatibility
+    - Clean separation of concerns
+
+Example:
+    >>> agent = CascadeAgent(models=[cheap, expensive])
+    >>> result = await agent.run("What is 2+2?")
+    >>>
+    >>> # Now shows correct costs!
+    >>> print(f"Total: ${result.total_cost:.6f}")      # $0.001542 ✅
+    >>> print(f"Draft: ${result.draft_cost:.6f}")       # $0.000042 ✅
+    >>> print(f"Verifier: ${result.verifier_cost:.6f}") # $0.001500 ✅
+
+
+CASCADE_AGENT CLASS:
+Cascade agent with intelligent streaming module routing and proper cost calculation.
+
+🆕 v2.5 ENHANCEMENT: CostCalculator Integration
+
+Cost calculation is now delegated to the telemetry module:
+1. Agent executes query → gets SpeculativeResult
+2. CostCalculator.calculate() → extracts/computes costs
+3. Returns CostBreakdown with accurate aggregation
+4. Agent builds CascadeResult with correct costs
+
+This fixes the bug where cascaded queries only showed draft cost.
+
+🚀 v2.4 ARCHITECTURE: Smart Streaming Module Selection
+
+The agent intelligently routes to the correct streaming module:
+
+1. PreRouter decides complexity-based routing (routing/)
+2. ToolRouter filters tool-capable models (routing/)
+3. **Agent detects tools parameter**
+4. **IF tools → ToolStreamManager (streaming/tools.py)**
+   **ELSE → StreamManager (streaming/base.py)**
+5. **CostCalculator computes costs (telemetry/)** 🆕
+6. MetricsCollector tracks statistics (telemetry/)
+7. TerminalVisualConsumer provides UI feedback (interface/)
+
+Module Integration:
+    - routing.PreRouter: Complexity-based routing decisions
+    - routing.ToolRouter: Tool capability filtering
+    - telemetry.CostCalculator: Cost calculation (NEW) 🆕
+    - telemetry.MetricsCollector: Comprehensive metrics tracking
+    - interface.TerminalVisualConsumer: Terminal visual feedback
+    - streaming.StreamManager: Text-only streaming wrapper
+    - streaming.tools.ToolStreamManager: Tool call streaming wrapper
+
+THREE APIs for different use cases (all support tools):
+1. run() - Simple, returns result with full diagnostics
+2. run_streaming() - Streaming with visuals, auto-selects correct manager
+3. stream_events() - Async iterator, yields events (for custom UIs)
+
+CASCADE_CONFIG CLASS:
+Configuration for cascading strategy.
+
+Example:
+    >>> config = CascadeConfig(
+    ...     quality_threshold=0.85,
+    ...     max_budget=0.05
+    ... )
+
+CASCADE_RESULT CLASS:
+Result from cascade agent execution with comprehensive diagnostics.
+
+Core Fields:
+    content: Generated response text
+    model_used: Name of model that produced final response
+    total_cost: Total cost in dollars (FIXED: properly aggregated)
+    latency_ms: Total latency in milliseconds
+    complexity: Detected complexity level
+    cascaded: Whether cascade was used
+    draft_accepted: If cascaded, whether draft was accepted
+    routing_strategy: How query was routed ("direct" or "cascade")
+    reason: Explanation for routing decision
+
+Tool Calling (v2.3+):
+    tool_calls: List of tool calls made by model (if any)
+    has_tool_calls: Whether response includes tool calls
+
+Quality System Diagnostics:
+    quality_score: Quality score from validator (0-1)
+    quality_threshold: Threshold used for validation
+    quality_check_passed: Whether quality check passed
+    rejection_reason: Why draft was rejected (if applicable)
+
+Response Tracking:
+    draft_response: Full draft response text (for validation)
+    verifier_response: Full verifier response text (if cascaded)
+    response_length: Length of final response
+    response_word_count: Word count of final response
+
+Timing Breakdown:
+    complexity_detection_ms: Time to detect complexity
+    draft_generation_ms: Time to generate draft
+    quality_verification_ms: Time for quality validation
+    verifier_generation_ms: Time to generate verifier response
+    cascade_overhead_ms: Wasted latency from cascade decisions:
+        - Draft accepted: 0ms (we saved verifier time)
+        - Draft rejected: full draft_latency_ms (wasted attempt)
+        - Direct route: 0ms (no cascade)
+
+Cost Breakdown (v2.5 - FIXED):
+    draft_cost: Cost of draft generation
+    verifier_cost: Cost of verifier generation
+    cost_saved: Cost saved vs always using best model
+

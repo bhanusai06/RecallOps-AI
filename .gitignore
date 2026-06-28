@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+Include/
+Lib/
+Scripts/
+pyvenv.cfg
+
+# Node
+node_modules/
+.next/
+out/
+coverage/
+dist/
+build/
+
+# Environment
+.env
+
+# Logs
+logs/
+*.log
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
