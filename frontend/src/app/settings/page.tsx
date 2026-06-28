@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Key, Save, Network, UserCog, Check } from "lucide-react";
+import { Key, Save, Network, UserCog, Check, Database, Trash2 } from "lucide-react";
 
 export default function SettingsPage() {
   // SRE profile states
@@ -201,6 +202,42 @@ export default function SettingsPage() {
                 className="bg-black/50 border-white/10 text-white" 
               />
               <p className="text-xs text-muted-foreground">If Hindsight returns a memory match with &ge; {routingThreshold}% confidence, Gemini Flash will be used instead of GPT-4.</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Database Management */}
+        <Card className="bg-[#0a0a0a]/80 border-white/10 backdrop-blur-xl shadow-xl border-rose-500/20">
+          <CardHeader className="border-b border-white/5">
+            <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+              <Database className="w-5 h-5 text-rose-500" />
+              Database Management
+            </CardTitle>
+            <CardDescription>Reset or clear SQLite incident history data.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            <div className="flex justify-between items-center flex-wrap gap-4">
+              <div className="space-y-1">
+                <span className="text-sm font-semibold text-white block">Truncate Incidents Table</span>
+                <span className="text-xs text-muted-foreground block">This deletes all logged outages, resolution playbooks, and causal graphs. This action is irreversible.</span>
+              </div>
+              <Button 
+                onClick={async () => {
+                  if (confirm("Are you sure you want to delete all historical incidents and resolutions?")) {
+                    try {
+                      await axios.delete("http://localhost:8000/api/v1/incidents");
+                      alert("Database cleared successfully.");
+                    } catch (e) {
+                      console.error("Failed to clear database:", e);
+                      alert("Clear action failed. Confirm backend is online.");
+                    }
+                  }
+                }}
+                className="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs h-9"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Wipe Incident History
+              </Button>
             </div>
           </CardContent>
         </Card>

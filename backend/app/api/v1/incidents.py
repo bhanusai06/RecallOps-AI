@@ -282,3 +282,23 @@ async def verify_incident(
         "verification_effectiveness": incident.verification_effectiveness,
         "owner": incident.owner
     }
+
+@router.delete("")
+async def clear_all_incidents(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Clears all incident history from the SQLite database.
+    """
+    from sqlalchemy import delete
+    from app.models.incident import UploadedLog, Resolution
+    try:
+        await db.execute(delete(Resolution))
+        await db.execute(delete(UploadedLog))
+        await db.execute(delete(Incident))
+        await db.commit()
+        return {"status": "success", "message": "All incident history cleared."}
+    except Exception as e:
+        await db.rollback()
+        raise AppException(f"Failed to clear database: {str(e)}", status_code=500)
+
