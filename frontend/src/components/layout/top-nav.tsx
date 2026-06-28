@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Search, User, Zap, LogOut, Settings, ShieldAlert, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,33 @@ export const TopNav = () => {
   const [showProfile, setShowProfile] = useState(false);
   const [activeEnv, setActiveEnv] = useState<"Production" | "Staging">("Production");
   
+  // Profile state synced with Settings page via localStorage
+  const [sreProfile, setSreProfile] = useState({
+    name: "Alex Rivera",
+    title: "On-Call SRE Lead",
+    team: "Core Infrastructure",
+    role: "Lead Platform Eng",
+    status: "Active On-Call"
+  });
+
+  useEffect(() => {
+    const storedName = localStorage.getItem("sre_name");
+    const storedTitle = localStorage.getItem("sre_title");
+    const storedTeam = localStorage.getItem("sre_team");
+    const storedRole = localStorage.getItem("sre_role");
+    const storedStatus = localStorage.getItem("sre_status");
+
+    if (storedName || storedTitle || storedTeam || storedRole || storedStatus) {
+      setSreProfile({
+        name: storedName || "Alex Rivera",
+        title: storedTitle || "On-Call SRE Lead",
+        team: storedTeam || "Core Infrastructure",
+        role: storedRole || "Lead Platform Eng",
+        status: storedStatus || "Active On-Call"
+      });
+    }
+  }, [showProfile]); // Re-fetch from localStorage dynamically when profile card is opened!
+
   const [notifications, setNotifications] = useState([
     { id: 1, text: "High Risk Alert: auth-worker memory matches previous OOM signature.", time: "2m ago", read: false, tab: "predictive" },
     { id: 2, text: "DB connection pool growth warning on payments-svc.", time: "15m ago", read: false, tab: "predictive" },
@@ -21,11 +48,8 @@ export const TopNav = () => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleNotificationClick = (n: any) => {
-    // Mark as read
     setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, read: true } : item));
     setShowNotifications(false);
-    
-    // Navigate to matching tab
     router.push(`/?tab=${n.tab}`);
   };
 
@@ -140,15 +164,15 @@ export const TopNav = () => {
                   <User className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white leading-none">Alex Rivera</h4>
-                  <span className="text-[10px] text-zinc-500 font-mono block mt-1">On-Call SRE Lead</span>
+                  <h4 className="text-sm font-bold text-white leading-none">{sreProfile.name}</h4>
+                  <span className="text-[10px] text-zinc-500 font-mono block mt-1">{sreProfile.title}</span>
                 </div>
               </div>
               
               <div className="space-y-1 font-mono text-[11px] text-zinc-400">
-                <div>Team: <span className="text-white">Core Infrastructure</span></div>
-                <div>Role: <span className="text-white">Lead Platform Eng</span></div>
-                <div>Status: <span className="text-emerald-400 font-bold">● Active On-Call</span></div>
+                <div>Team: <span className="text-white">{sreProfile.team}</span></div>
+                <div>Role: <span className="text-white">{sreProfile.role}</span></div>
+                <div>Status: <span className="text-emerald-400 font-bold">● {sreProfile.status}</span></div>
               </div>
 
               <div className="border-t border-white/5 pt-2 flex flex-col gap-1">
