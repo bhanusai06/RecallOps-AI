@@ -118,7 +118,7 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
     const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(cleanPass);
 
     if (!hasLowerCase || !hasUpperCase || !hasNumber || !hasSpecialChar) {
-      setError("Password must contain at least 1 uppercase, 1 lowercase, 1 number, and 1 special character.");
+      setError("Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (e.g., @, #, $, *).");
       return;
     }
 
@@ -126,15 +126,15 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
     const exists = users.some((u: any) => u && typeof u.username === "string" && u.username.toLowerCase() === cleanUser);
 
     if (exists) {
-      setError(`Username "${cleanUser}" is already taken. Please choose another.`);
+      setError(`The username "${cleanUser}" is already taken. Please choose a different username, or go to the Sign In tab if you already have an account.`);
       return;
     }
 
     const newUser = {
       username: cleanUser,
       name: cleanName,
-      role: regRole.trim(),
-      team: regTeam.trim(),
+      role: regRole.trim() || "Site Reliability Eng",
+      team: regTeam.trim() || "Core Platform",
       password: cleanPass,
     };
 
@@ -546,6 +546,19 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
                 )}
 
               </CardContent>
+              <div className="border-t border-white/5 p-4 text-center">
+                <button
+                  onClick={() => {
+                    localStorage.removeItem("sre_registered_users");
+                    localStorage.removeItem("sre_authenticated");
+                    alert("Local user registry has been cleared! The page will now reload.");
+                    window.location.reload();
+                  }}
+                  className="text-[10px] text-zinc-500 hover:text-rose-400 font-mono transition-colors underline decoration-dotted underline-offset-4"
+                >
+                  Developer: Reset Accounts Registry
+                </button>
+              </div>
             </Card>
 
           </div>
