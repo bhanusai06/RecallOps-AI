@@ -20,6 +20,8 @@ export default function HistoryPage() {
   const [incidents, setIncidents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("All");
+  const [showFilters, setShowFilters] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -51,11 +53,13 @@ export default function HistoryPage() {
     fetchHistory();
   }, []);
 
-  const filteredIncidents = incidents.filter(inc => 
-    inc.id.toLowerCase().includes(search.toLowerCase()) ||
-    inc.service.toLowerCase().includes(search.toLowerCase()) ||
-    inc.root_cause.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredIncidents = incidents.filter(inc => {
+    const matchesSearch = inc.id.toLowerCase().includes(search.toLowerCase()) ||
+                          inc.service.toLowerCase().includes(search.toLowerCase()) ||
+                          inc.root_cause.toLowerCase().includes(search.toLowerCase());
+    const matchesSeverity = severityFilter === "All" ? true : inc.severity.toLowerCase() === severityFilter.toLowerCase();
+    return matchesSearch && matchesSeverity;
+  });
 
   return (
     <div className="space-y-6 pb-12">
@@ -77,10 +81,35 @@ export default function HistoryPage() {
               className="w-full bg-white/5 border-white/10 pl-9 focus-visible:ring-primary/50"
             />
           </div>
-          <Button variant="outline" className="border-white/10 bg-black/50 hover:bg-white/10">
-            <Filter className="w-4 h-4 mr-2" />
-            Filters
-          </Button>
+          <div className="relative">
+            <Button 
+              onClick={() => setShowFilters(!showFilters)}
+              variant="outline" 
+              className="border-white/10 bg-black/50 hover:bg-white/10"
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              Filters: {severityFilter}
+            </Button>
+            
+            {showFilters && (
+              <div className="absolute right-0 mt-2 w-48 bg-[#0a0a0a] border border-white/10 rounded-xl shadow-2xl p-2 z-50 backdrop-blur-xl space-y-1">
+                {["All", "Critical", "High", "Medium", "Low"].map((sev) => (
+                  <button
+                    key={sev}
+                    onClick={() => {
+                      setSeverityFilter(sev);
+                      setShowFilters(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold ${
+                      severityFilter === sev ? "bg-primary text-black font-bold" : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    {sev} Severity
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {loading ? (
