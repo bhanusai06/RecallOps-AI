@@ -50,8 +50,14 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
   const getRegisteredUsers = () => {
     try {
       const data = localStorage.getItem("sre_registered_users");
-      return data ? JSON.parse(data) : DEFAULT_USERS;
-    } catch {
+      if (!data) return DEFAULT_USERS;
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((u: any) => u && typeof u.username === "string");
+      }
+      return DEFAULT_USERS;
+    } catch (err) {
+      console.error("Failed to parse SRE user database, resetting:", err);
       return DEFAULT_USERS;
     }
   };
@@ -61,12 +67,16 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
     setError("");
 
     const users = getRegisteredUsers();
+    const cleanSignInName = signInUser.trim().toLowerCase();
     const match = users.find(
-      (u: any) => u.username.toLowerCase() === signInUser.toLowerCase() || u.name.toLowerCase() === signInUser.toLowerCase()
+      (u: any) => u && typeof u.username === "string" && (
+        u.username.toLowerCase() === cleanSignInName || 
+        u.name.toLowerCase() === cleanSignInName
+      )
     );
 
     if (!match) {
-      setError("User not found. Register a new account first!");
+      setError("User profile not found. Register a new account first!");
       return;
     }
 
@@ -92,25 +102,29 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
     setError("");
     setSuccess("");
 
-    if (!regName || !regUser || !regPass) {
+    const cleanName = regName.trim();
+    const cleanUser = regUser.trim().toLowerCase();
+    const cleanPass = regPass.trim();
+
+    if (!cleanName || !cleanUser || !cleanPass) {
       setError("Please fill in all required fields.");
       return;
     }
 
     const users = getRegisteredUsers();
-    const exists = users.some((u: any) => u.username.toLowerCase() === regUser.toLowerCase());
+    const exists = users.some((u: any) => u && typeof u.username === "string" && u.username.toLowerCase() === cleanUser);
 
     if (exists) {
-      setError("Username already taken. Please choose another.");
+      setError(`Username "${cleanUser}" is already taken. Please choose another.`);
       return;
     }
 
     const newUser = {
-      username: regUser.toLowerCase(),
-      name: regName,
-      role: regRole,
-      team: regTeam,
-      password: regPass,
+      username: cleanUser,
+      name: cleanName,
+      role: regRole.trim(),
+      team: regTeam.trim(),
+      password: cleanPass,
     };
 
     const updatedUsers = [...users, newUser];
