@@ -3,55 +3,79 @@
 import React, { useState, useEffect } from "react";
 import { 
   BrainCircuit, Key, Lock, User, Terminal, ChevronRight, ShieldCheck, 
-  ShieldAlert, Activity, LayoutDashboard, Settings, PlusCircle, Network, LogIn, Check, Info, X
+  ShieldAlert, Activity, LayoutDashboard, Settings, PlusCircle, Network, LogIn, Check, Info, X, UserPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
-const SRE_CREDENTIALS = [
-  { username: "alex", name: "Alex Rivera", role: "Lead Platform Eng", team: "Core Infrastructure", password: "admin", avatarColor: "from-violet-500 to-fuchsia-400" },
-  { username: "jordan", name: "Jordan Lee", role: "SecOps Specialist", team: "Security Operations", password: "admin", avatarColor: "from-emerald-500 to-teal-400" },
-  { username: "taylor", name: "Taylor Smith", role: "Cloud Infrastructure Eng", team: "Site Reliability", password: "admin", avatarColor: "from-blue-500 to-cyan-400" },
+// Default seed users for immediate demonstration
+const DEFAULT_USERS = [
+  { username: "alex", name: "Alex Rivera", role: "Lead Platform Eng", team: "Core Infrastructure", password: "admin" },
+  { username: "jordan", name: "Jordan Lee", role: "SecOps Specialist", team: "Security Operations", password: "admin" },
+  { username: "taylor", name: "Taylor Smith", role: "Cloud Infrastructure Eng", team: "Site Reliability", password: "admin" },
 ];
 
 export const AuthGate = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [activeForm, setActiveForm] = useState<"signin" | "signup">("signin");
   
-  // Login form states
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  // Sign In inputs
+  const [signInUser, setSignInUser] = useState("");
+  const [signInPass, setSignInPass] = useState("");
+
+  // Sign Up / Registration inputs
+  const [regName, setRegName] = useState("");
+  const [regUser, setRegUser] = useState("");
+  const [regRole, setRegRole] = useState("Site Reliability Eng");
+  const [regTeam, setRegTeam] = useState("Core Platform");
+  const [regPass, setRegPass] = useState("");
+
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     const authStatus = localStorage.getItem("sre_authenticated");
     setIsAuthenticated(authStatus === "true");
+
+    // Seed default users if none exist in localStorage
+    if (!localStorage.getItem("sre_registered_users")) {
+      localStorage.setItem("sre_registered_users", JSON.stringify(DEFAULT_USERS));
+    }
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const getRegisteredUsers = () => {
+    try {
+      const data = localStorage.getItem("sre_registered_users");
+      return data ? JSON.parse(data) : DEFAULT_USERS;
+    } catch {
+      return DEFAULT_USERS;
+    }
+  };
+
+  const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    // Find credentials matching selected user or typed username
-    const match = SRE_CREDENTIALS.find(
-      (u) => u.username.toLowerCase() === username.toLowerCase() || u.name.toLowerCase() === username.toLowerCase()
+    const users = getRegisteredUsers();
+    const match = users.find(
+      (u: any) => u.username.toLowerCase() === signInUser.toLowerCase() || u.name.toLowerCase() === signInUser.toLowerCase()
     );
 
     if (!match) {
-      setError("Invalid user credentials.");
+      setError("User not found. Register a new account first!");
       return;
     }
 
-    if (password !== match.password) {
-      setError("Incorrect password. Use password 'admin' for demo.");
+    if (signInPass !== match.password) {
+      setError("Incorrect password.");
       return;
     }
 
-    // Save SRE credentials dynamically to localStorage
+    // Save session credentials
     localStorage.setItem("sre_authenticated", "true");
     localStorage.setItem("sre_name", match.name);
     localStorage.setItem("sre_role", match.role);
@@ -60,11 +84,54 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
 
     setIsAuthenticated(true);
     setShowLoginModal(false);
-    // Reload page to refresh context
     window.location.reload();
   };
 
-  // Prevent flash of unauthenticated content
+  const handleSignUp = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (!regName || !regUser || !regPass) {
+      setError("Please fill in all required fields.");
+      return;
+    }
+
+    const users = getRegisteredUsers();
+    const exists = users.some((u: any) => u.username.toLowerCase() === regUser.toLowerCase());
+
+    if (exists) {
+      setError("Username already taken. Please choose another.");
+      return;
+    }
+
+    const newUser = {
+      username: regUser.toLowerCase(),
+      name: regName,
+      role: regRole,
+      team: regTeam,
+      password: regPass,
+    };
+
+    const updatedUsers = [...users, newUser];
+    localStorage.setItem("sre_registered_users", JSON.stringify(updatedUsers));
+
+    setSuccess("Account registered! Signing you in...");
+
+    // Auto log in after registration
+    localStorage.setItem("sre_authenticated", "true");
+    localStorage.setItem("sre_name", newUser.name);
+    localStorage.setItem("sre_role", newUser.role);
+    localStorage.setItem("sre_team", newUser.team);
+    localStorage.setItem("sre_status", "Active On-Call");
+
+    setTimeout(() => {
+      setIsAuthenticated(true);
+      setShowLoginModal(false);
+      window.location.reload();
+    }, 1500);
+  };
+
   if (isAuthenticated === null) {
     return (
       <div className="h-screen w-screen bg-[#020202] flex items-center justify-center">
@@ -104,7 +171,10 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
             ● System Public Dashboard
           </Badge>
           <Button 
-            onClick={() => setShowLoginModal(true)}
+            onClick={() => {
+              setActiveForm("signin");
+              setShowLoginModal(true);
+            }}
             className="bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs h-9 px-4 shadow-[0_0_15px_rgba(124,58,237,0.4)]"
           >
             <LogIn className="w-4 h-4 mr-2" />
@@ -126,12 +196,27 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
               Authenticate to access live telemetry feeds, upload Kubernetes cluster logs, visualize interactive outage timelines, and generate SRE playbooks.
             </p>
           </div>
-          <Button 
-            onClick={() => setShowLoginModal(true)}
-            className="bg-white hover:bg-zinc-200 text-black font-extrabold px-6 h-11"
-          >
-            Access Terminal <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              variant="outline"
+              onClick={() => {
+                setActiveForm("signup");
+                setShowLoginModal(true);
+              }}
+              className="border-white/10 hover:bg-white/5 text-white font-extrabold px-5 h-11 text-xs"
+            >
+              <UserPlus className="w-4 h-4 mr-2" /> Create Account
+            </Button>
+            <Button 
+              onClick={() => {
+                setActiveForm("signin");
+                setShowLoginModal(true);
+              }}
+              className="bg-white hover:bg-zinc-200 text-black font-extrabold px-6 h-11 text-xs"
+            >
+              Access Terminal <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
         </div>
 
         {/* Public Mock Dashboard Grid */}
@@ -232,123 +317,208 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
         &copy; 2026 RecallOps AI Platforms, Inc. All rights reserved. Secure SRE Incident Intelligence.
       </footer>
 
-      {/* SRE Gate Login Modal Overlay */}
+      {/* SRE Gate Login & Registration Modal */}
       {showLoginModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="w-full max-w-md animate-in zoom-in-95 duration-200 relative">
             
             {/* Close Button */}
             <button 
-              onClick={() => setShowLoginModal(false)}
+              onClick={() => {
+                setShowLoginModal(false);
+                setError("");
+                setSuccess("");
+              }}
               className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1 hover:bg-white/5 rounded-lg transition-colors z-50"
             >
               <X className="w-5 h-5" />
             </button>
 
-            {/* Login Card */}
             <Card className="bg-[#0a0a0a] border-white/10 shadow-2xl p-4 md:p-6 w-full">
-              <CardHeader className="space-y-1">
+              <CardHeader className="space-y-1 pb-4">
                 <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
                   <Lock className="w-5 h-5 text-violet-400" />
                   SRE Gateway Portal
                 </CardTitle>
-                <CardDescription className="text-zinc-400 text-xs">
-                  Enter your credentials or select an on-call SRE profile to begin.
-                </CardDescription>
+                <div className="flex border-b border-white/5 mt-3">
+                  <button
+                    onClick={() => {
+                      setActiveForm("signin");
+                      setError("");
+                      setSuccess("");
+                    }}
+                    className={`flex-1 text-center py-2 text-xs font-bold transition-all border-b-2 ${
+                      activeForm === "signin" ? "border-violet-500 text-white" : "border-transparent text-zinc-500 hover:text-white"
+                    }`}
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveForm("signup");
+                      setError("");
+                      setSuccess("");
+                    }}
+                    className={`flex-1 text-center py-2 text-xs font-bold transition-all border-b-2 ${
+                      activeForm === "signup" ? "border-violet-500 text-white" : "border-transparent text-zinc-500 hover:text-white"
+                    }`}
+                  >
+                    Create Account
+                  </button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 
-                {/* SRE Demo Profiles selector */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-zinc-300">Select Demo Profile</Label>
-                  <div className="grid grid-cols-1 gap-2">
-                    {SRE_CREDENTIALS.map((u) => (
-                      <button
-                        key={u.username}
+                {/* 1. SIGN IN FORM */}
+                {activeForm === "signin" && (
+                  <form onSubmit={handleSignIn} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-user" className="text-zinc-300 text-xs">Username / Name</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-3 w-4 h-4 text-zinc-500" />
+                        <Input
+                          id="signin-user"
+                          placeholder="e.g. alex"
+                          value={signInUser}
+                          onChange={(e) => setSignInUser(e.target.value)}
+                          className="bg-black/50 border-white/10 text-white pl-9 text-xs"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-pass" className="text-zinc-300 text-xs">Password</Label>
+                      <div className="relative">
+                        <Key className="absolute left-3 top-3 w-4 h-4 text-zinc-500" />
+                        <Input
+                          id="signin-pass"
+                          type="password"
+                          placeholder="Password"
+                          value={signInPass}
+                          onChange={(e) => setSignInPass(e.target.value)}
+                          className="bg-black/50 border-white/10 text-white pl-9 text-xs font-mono"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {error && (
+                      <div className="text-rose-400 text-xs font-mono border border-rose-500/20 bg-rose-500/5 p-2.5 rounded-lg">
+                        {error}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 pt-2">
+                      <Button
                         type="button"
-                        onClick={() => {
-                          setUsername(u.username);
-                        }}
-                        className={cn(
-                          "flex items-center justify-between p-3 rounded-xl border text-left transition-all duration-200",
-                          username.toLowerCase() === u.username.toLowerCase()
-                            ? "bg-white/5 border-violet-500/50 shadow-[0_0_15px_rgba(139,92,246,0.15)] text-white"
-                            : "bg-black/40 border-white/5 text-zinc-400 hover:bg-white/5"
-                        )}
+                        variant="outline"
+                        onClick={() => setShowLoginModal(false)}
+                        className="flex-1 border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 font-semibold text-xs"
                       >
-                        <div className="flex items-center gap-2">
-                          <div className={`w-7 h-7 rounded-full bg-gradient-to-tr ${u.avatarColor} flex items-center justify-center`}>
-                            <User className="w-3.5 h-3.5 text-white" />
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold block">{u.name}</span>
-                            <span className="text-[10px] text-zinc-500 font-mono">{u.role}</span>
-                          </div>
-                        </div>
-                        <Badge variant="outline" className="text-[9px] uppercase tracking-wider border-white/10 font-mono">
-                          {u.username}
-                        </Badge>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="flex-1 bg-violet-600 hover:bg-violet-500 text-white font-bold shadow-[0_0_20px_rgba(124,58,237,0.3)] text-xs"
+                      >
+                        Sign In
+                      </Button>
+                    </div>
+                  </form>
+                )}
 
-                {/* Form login inputs */}
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="username" className="text-zinc-300 text-xs">Custom Username / Email</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 w-4 h-4 text-zinc-500" />
+                {/* 2. SIGN UP / REGISTRATION FORM */}
+                {activeForm === "signup" && (
+                  <form onSubmit={handleSignUp} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-name" className="text-zinc-300 text-xs">Full Name *</Label>
                       <Input
-                        id="username"
-                        placeholder="Enter username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="bg-black/50 border-white/10 text-white pl-9 text-xs"
+                        id="reg-name"
+                        placeholder="e.g. Alex Rivera"
+                        value={regName}
+                        onChange={(e) => setRegName(e.target.value)}
+                        className="bg-black/50 border-white/10 text-white text-xs"
                         required
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="password" className="text-zinc-300 text-xs">SRE Password</Label>
-                    <div className="relative">
-                      <Key className="absolute left-3 top-3 w-4 h-4 text-zinc-500" />
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-user" className="text-zinc-300 text-xs">Username *</Label>
                       <Input
-                        id="password"
+                        id="reg-user"
+                        placeholder="e.g. alex"
+                        value={regUser}
+                        onChange={(e) => setRegUser(e.target.value)}
+                        className="bg-black/50 border-white/10 text-white text-xs font-mono"
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="reg-role" className="text-zinc-300 text-xs">Title / Role</Label>
+                        <Input
+                          id="reg-role"
+                          value={regRole}
+                          onChange={(e) => setRegRole(e.target.value)}
+                          className="bg-black/50 border-white/10 text-white text-xs"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="reg-team" className="text-zinc-300 text-xs">Team</Label>
+                        <Input
+                          id="reg-team"
+                          value={regTeam}
+                          onChange={(e) => setRegTeam(e.target.value)}
+                          className="bg-black/50 border-white/10 text-white text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-pass" className="text-zinc-300 text-xs">Create Password *</Label>
+                      <Input
+                        id="reg-pass"
                         type="password"
-                        placeholder="Use password 'admin'"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="bg-black/50 border-white/10 text-white pl-9 text-xs font-mono"
+                        placeholder="Create Password"
+                        value={regPass}
+                        onChange={(e) => setRegPass(e.target.value)}
+                        className="bg-black/50 border-white/10 text-white text-xs font-mono"
                         required
                       />
                     </div>
-                  </div>
 
-                  {error && (
-                    <div className="text-rose-400 text-xs font-mono border border-rose-500/20 bg-rose-500/5 p-2.5 rounded-lg">
-                      {error}
+                    {error && (
+                      <div className="text-rose-400 text-xs font-mono border border-rose-500/20 bg-rose-500/5 p-2.5 rounded-lg">
+                        {error}
+                      </div>
+                    )}
+
+                    {success && (
+                      <div className="text-emerald-400 text-xs font-mono border border-emerald-500/20 bg-emerald-500/5 p-2.5 rounded-lg flex items-center gap-1.5">
+                        <Check className="w-4 h-4" /> {success}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowLoginModal(false)}
+                        className="flex-1 border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 font-semibold text-xs"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="flex-1 bg-violet-600 hover:bg-violet-500 text-white font-bold shadow-[0_0_20px_rgba(124,58,237,0.3)] text-xs"
+                      >
+                        Register
+                      </Button>
                     </div>
-                  )}
-
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowLoginModal(false)}
-                      className="flex-1 border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 font-semibold text-xs"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      className="flex-1 bg-violet-600 hover:bg-violet-500 text-white font-bold shadow-[0_0_20px_rgba(124,58,237,0.3)] text-xs"
-                    >
-                      Authenticate
-                    </Button>
-                  </div>
-                </form>
+                  </form>
+                )}
 
               </CardContent>
             </Card>
