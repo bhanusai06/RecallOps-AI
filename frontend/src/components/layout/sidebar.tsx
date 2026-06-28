@@ -70,7 +70,7 @@ export const Sidebar = () => {
   const currentTab = searchParams.get("tab") || "dashboard";
 
   return (
-    <div className="space-y-4 py-4 flex flex-col h-full bg-[#0a0a0a] border-r border-white/5 w-64 text-white shrink-0">
+    <div className="hidden lg:flex space-y-4 py-4 flex-col h-full bg-[#0a0a0a] border-r border-white/5 w-64 text-white shrink-0">
       <div className="px-3 py-2 flex-1">
         <Link href="/?tab=dashboard" className="flex items-center gap-3 pl-3 mb-10 hover:opacity-90 transition-opacity">
           <div className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 border border-violet-400/40 shadow-[0_0_15px_rgba(124,58,237,0.4)] group overflow-hidden">

@@ -1,15 +1,36 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Bell, Search, User, Zap, LogOut, Settings, ShieldAlert, Check, X } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { 
+  Bell, Search, User, Zap, LogOut, Settings, ShieldAlert, Check, X, Menu,
+  Activity, History, LayoutDashboard, PlusCircle, Archive, BookOpen, Network, BrainCircuit
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+
+const routes = [
+  { label: "Dashboard", icon: LayoutDashboard, href: "/?tab=dashboard", color: "text-sky-400" },
+  { label: "New Incident", icon: PlusCircle, href: "/?tab=new", color: "text-emerald-400" },
+  { label: "Incident History", icon: History, href: "/history", color: "text-violet-400" },
+  { label: "Memory Vault", icon: Archive, href: "/?tab=vault", color: "text-amber-400" },
+  { label: "Resolution Library", icon: BookOpen, href: "/?tab=resolutions", color: "text-sky-500" },
+  { label: "Knowledge Graph", icon: Network, href: "/?tab=graph", color: "text-purple-400" },
+  { label: "Predictive Engine", icon: ShieldAlert, href: "/?tab=predictive", color: "text-rose-400" },
+  { label: "Analytics", icon: Activity, href: "/analytics", color: "text-pink-400" },
+  { label: "Settings", icon: Settings, href: "/settings", color: "text-gray-400" },
+];
 
 export const TopNav = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get("tab") || "dashboard";
+  
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeEnv, setActiveEnv] = useState<"Production" | "Staging">("Production");
   
   // Profile state synced with Settings page via localStorage
@@ -59,22 +80,33 @@ export const TopNav = () => {
   };
 
   return (
-    <div className="h-16 flex items-center justify-between border-b border-white/5 bg-[#0a0a0a]/80 backdrop-blur-md px-6 z-50 sticky top-0">
-      <div className="flex items-center w-full max-w-md relative">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
-        <Input 
-          placeholder="Search incident memory or ask NL query..." 
-          className="w-full bg-white/5 border-white/10 pl-9 focus-visible:ring-primary/50 text-sm h-9 rounded-full text-white"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              const query = (e.target as HTMLInputElement).value;
-              router.push(`/?tab=dashboard&search=${encodeURIComponent(query)}`);
-            }
-          }}
-        />
+    <div className="h-16 flex items-center justify-between border-b border-white/5 bg-[#0a0a0a]/80 backdrop-blur-md px-4 md:px-6 z-50 sticky top-0">
+      
+      <div className="flex items-center gap-3 w-full max-w-md">
+        {/* Mobile Hamburger Trigger */}
+        <button 
+          onClick={() => setShowMobileMenu(!showMobileMenu)}
+          className="lg:hidden p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors focus:outline-none"
+        >
+          {showMobileMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+
+        <div className="flex items-center w-full relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+          <Input 
+            placeholder="Search incident memory..." 
+            className="w-full bg-white/5 border-white/10 pl-9 focus-visible:ring-primary/50 text-sm h-9 rounded-full text-white"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const query = (e.target as HTMLInputElement).value;
+                router.push(`/?tab=dashboard&search=${encodeURIComponent(query)}`);
+              }
+            }}
+          />
+        </div>
       </div>
 
-      <div className="flex items-center gap-4 relative">
+      <div className="flex items-center gap-2 md:gap-4 relative">
         {/* Environment Toggle Button */}
         <Badge 
           onClick={() => setActiveEnv(prev => prev === "Production" ? "Staging" : "Production")}
@@ -91,6 +123,7 @@ export const TopNav = () => {
             onClick={() => {
               setShowNotifications(!showNotifications);
               setShowProfile(false);
+              setShowMobileMenu(false);
             }}
             className={`p-2 rounded-full transition-colors relative ${
               showNotifications ? "bg-white/10 text-white" : "text-zinc-400 hover:text-white hover:bg-white/5"
@@ -150,6 +183,7 @@ export const TopNav = () => {
             onClick={() => {
               setShowProfile(!showProfile);
               setShowNotifications(false);
+              setShowMobileMenu(false);
             }}
             className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-fuchsia-400 flex items-center justify-center cursor-pointer ring-2 ring-background border border-white/10 shadow-sm hover:opacity-95 transition-opacity focus:outline-none"
           >
@@ -201,6 +235,64 @@ export const TopNav = () => {
           )}
         </div>
       </div>
+
+      {/* Mobile Sliding Drawer Navigation */}
+      {showMobileMenu && (
+        <div className="fixed inset-y-0 left-0 w-64 bg-[#0a0a0a] border-r border-white/10 z-50 shadow-2xl p-4 flex flex-col animate-in slide-in-from-left duration-200">
+          <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
+            <Link 
+              href="/?tab=dashboard" 
+              onClick={() => setShowMobileMenu(false)}
+              className="flex items-center gap-2"
+            >
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center border border-violet-400/20">
+                <BrainCircuit className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-extrabold text-white text-lg">RecallOps</span>
+            </Link>
+            <button 
+              onClick={() => setShowMobileMenu(false)}
+              className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 space-y-1.5 overflow-y-auto">
+            {routes.map((route) => {
+              const routeTab = route.href.split("tab=")[1];
+              const isActive = routeTab ? (currentTab === routeTab) : false;
+
+              return (
+                <Link
+                  href={route.href}
+                  key={route.href}
+                  onClick={() => setShowMobileMenu(false)}
+                  className={cn(
+                    "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/5 rounded-lg transition-colors items-center gap-3",
+                    isActive ? "text-white bg-white/10 border-l-2 border-primary" : "text-zinc-400"
+                  )}
+                >
+                  <route.icon className={cn("w-5 h-5", route.color)} />
+                  {route.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="border-t border-white/5 pt-4">
+            <div className="flex items-center gap-3 p-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-fuchsia-400 flex items-center justify-center">
+                <User className="w-4 h-4 text-white" />
+              </div>
+              <div className="truncate">
+                <span className="text-xs font-bold text-white block truncate leading-none">{sreProfile.name}</span>
+                <span className="text-[10px] text-zinc-500 font-mono block mt-1">{sreProfile.status}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
