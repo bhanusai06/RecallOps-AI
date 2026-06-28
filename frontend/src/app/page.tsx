@@ -1,3 +1,4 @@
+// RecallOps AI Incident Hub client application
 "use client";
 
 import { useState } from "react";
