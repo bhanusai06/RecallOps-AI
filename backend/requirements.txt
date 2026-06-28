@@ -4,3 +4,5 @@ sqlalchemy
 alembic
 pydantic
 pydantic-settings
+aiosqlite
+cascadeflow
