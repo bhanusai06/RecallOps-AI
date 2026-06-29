@@ -38,6 +38,35 @@ export interface AnalysisInfo {
   recovery_time_sec?: number;
   verification_effectiveness?: string;
   model_metadata?: any;
+  safety_gate?: {
+    environment_match: boolean;
+    service_match: boolean;
+    service_version_match: boolean;
+    deployment_version_match: boolean;
+    config_hash_match: boolean;
+    region_match: boolean;
+    dependency_version_match: boolean;
+    blast_radius_match: boolean;
+    severity_match: boolean;
+    is_safe: boolean;
+  };
+  preconditions?: {
+    db_pool_healthy: boolean;
+    active_migrations: boolean;
+    pending_deployments: boolean;
+    cluster_healthy: boolean;
+    downstream_stable: boolean;
+    is_ready: boolean;
+  };
+  reflection_quality?: {
+    success_rate: number;
+    recovery_speed: number;
+    stability_after_fix: number;
+    reflection_score: number;
+  };
+  false_reuse_risk?: string;
+  symptom_match?: number;
+  root_cause_match?: number;
 }
 
 export interface PipelineTiming {

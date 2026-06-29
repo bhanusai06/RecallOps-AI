@@ -182,6 +182,27 @@ async def list_incidents(
                 feedback = json.loads(inc.feedback_json)
             except:
                 pass
+                
+        safety_gate = {}
+        if inc.safety_gate_json:
+            try:
+                safety_gate = json.loads(inc.safety_gate_json)
+            except:
+                pass
+                
+        preconditions = {}
+        if inc.preconditions_json:
+            try:
+                preconditions = json.loads(inc.preconditions_json)
+            except:
+                pass
+                
+        reflection = {}
+        if inc.reflection_quality_json:
+            try:
+                reflection = json.loads(inc.reflection_quality_json)
+            except:
+                pass
 
         records.append({
             "id": inc.id,
@@ -205,7 +226,11 @@ async def list_incidents(
             "runbook": inc.runbook_markdown or "",
             "deployment_correlation": dep,
             "collaboration_notes": collab,
-            "feedback": feedback
+            "feedback": feedback,
+            "safety_gate": safety_gate,
+            "preconditions": preconditions,
+            "reflection_quality": reflection,
+            "false_reuse_risk": inc.false_reuse_risk or "UNKNOWN"
         })
     return records
 

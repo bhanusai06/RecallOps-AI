@@ -81,6 +81,33 @@ class SignatureExtractor:
         if ts_match:
             timestamp = ts_match.group(1)
 
+        # 9. Deterministic Metadata Extraction for Safety Gates
+        service_version = "latest"
+        ver_match = re.search(r"v\d+\.\d+\.\d+", log_lower)
+        if ver_match:
+            service_version = ver_match.group(0)
+
+        deployment_version = "unknown"
+        dep_match = re.search(r"deploy(?:ment)?[-_]?(\w{7})", log_lower)
+        if dep_match:
+            deployment_version = dep_match.group(1)
+            
+        config_hash = "unknown"
+        cfg_match = re.search(r"config(?:map)?[-_]?hash[:=]?\s*([a-f0-9]{8,64})", log_lower)
+        if cfg_match:
+            config_hash = cfg_match.group(1)
+
+        region = "us-east-1"
+        reg_match = re.search(r"region[:=]?\s*([a-z]{2}-[a-z]+-\d)", log_lower)
+        if reg_match:
+            region = reg_match.group(1)
+
+        dependencies = "redis,postgres"
+        if "elasticsearch" in log_lower or "elastic" in log_lower:
+            dependencies += ",elasticsearch"
+        if "kafka" in log_lower:
+            dependencies += ",kafka"
+
         return {
             "exit_code": exit_code,
             "resource_type": resource_type,
@@ -89,5 +116,10 @@ class SignatureExtractor:
             "environment": environment,
             "severity": severity,
             "affected_service": affected_service,
-            "timestamp": timestamp
+            "timestamp": timestamp,
+            "service_version": service_version,
+            "deployment_version": deployment_version,
+            "config_hash": config_hash,
+            "region": region,
+            "dependencies": dependencies
         }

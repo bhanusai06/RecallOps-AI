@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Any
 from pydantic import BaseModel
 
 class ParsedIncident(BaseModel):
@@ -48,6 +48,14 @@ class AnalysisResult(BaseModel):
     recovery_time_sec: Optional[int] = None
     verification_effectiveness: Optional[str] = None
     model_metadata: Optional[dict] = None
+    
+    # Deterministic Engine Verification Fields
+    safety_gate: Optional[Any] = None
+    preconditions: Optional[Any] = None
+    reflection_quality: Optional[Any] = None
+    false_reuse_risk: Optional[str] = "UNKNOWN"
+    symptom_match: Optional[float] = 0.0
+    root_cause_match: Optional[float] = 0.0
 
 class PipelineTiming(BaseModel):
     parser_ms: int

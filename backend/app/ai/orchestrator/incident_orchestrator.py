@@ -11,6 +11,7 @@ from app.ai.analytics.timeline_reconstructor import TimelineReconstructor
 from app.ai.analytics.change_detector import ChangeDetector
 from app.ai.analytics.blast_radius import BlastRadiusMapper
 from app.ai.analytics.preventive_ai import PreventiveAI
+from app.ai.analytics.safety_gater import SafetyGater
 import uuid
 import logging
 
@@ -41,6 +42,7 @@ class IncidentOrchestrator:
         self.change_detector = ChangeDetector()
         self.blast_mapper = BlastRadiusMapper()
         self.preventive_ai = PreventiveAI()
+        self.safety_gater = SafetyGater()
 
     async def run_incident_pipeline(self, raw_log: str, db = None) -> FinalIncidentReport:
         import time
@@ -102,6 +104,45 @@ class IncidentOrchestrator:
             parsed_incident.category,
             parsed_incident.signature.get("affected_service", "unknown")
         )
+
+        # 6.5 Deterministic Verification & Safety Gating
+        from app.schemas.orchestrator import ReflectionQualitySchema
+        
+        memory_sig = memory_results[0].signature if memory_results and hasattr(memory_results[0], "signature") and memory_results[0].signature else {}
+        if not memory_sig and memory_results and isinstance(memory_results[0].model_dump().get("signature"), dict):
+             memory_sig = memory_results[0].model_dump().get("signature", {})
+
+        safety_gate = self.safety_gater.evaluate_safety(parsed_incident.signature, memory_sig)
+        preconditions = self.safety_gater.evaluate_preconditions(parsed_incident.signature)
+        
+        analysis_result.safety_gate = safety_gate
+        analysis_result.preconditions = preconditions
+        
+        # Mock reflection quality for now
+        success_rate = 0.95 if safety_gate.is_safe else 0.4
+        recovery_speed = 0.8
+        stability = 0.9
+        reflection_score = (success_rate * 0.4) + (recovery_speed * 0.3) + (stability * 0.3)
+        
+        analysis_result.reflection_quality = ReflectionQualitySchema(
+            success_rate=success_rate,
+            recovery_speed=recovery_speed,
+            stability_after_fix=stability,
+            reflection_score=reflection_score
+        )
+        
+        analysis_result.symptom_match = estimated_confidence
+        analysis_result.root_cause_match = estimated_confidence if safety_gate.is_safe else estimated_confidence * 0.5
+        
+        # Confidence Gating Rule
+        if not preconditions.is_ready:
+            analysis_result.confidence = min(analysis_result.confidence, 0.4)
+            analysis_result.false_reuse_risk = "HIGH"
+        elif not safety_gate.is_safe:
+            analysis_result.confidence = min(analysis_result.confidence, 0.6)
+            analysis_result.false_reuse_risk = "MEDIUM"
+        else:
+            analysis_result.false_reuse_risk = "LOW"
 
         # 7. Memory Reflection & Storage
         incident_id = str(uuid.uuid4())
@@ -197,7 +238,11 @@ class IncidentOrchestrator:
                     postmortem_json=json.dumps(pm_data),
                     runbook_markdown=runbook_md,
                     deployment_correlation_json=json.dumps(dep_corr),
-                    collaboration_notes_json=json.dumps(collab)
+                    collaboration_notes_json=json.dumps(collab),
+                    safety_gate_json=analysis_result.safety_gate.model_dump_json() if analysis_result.safety_gate else None,
+                    preconditions_json=analysis_result.preconditions.model_dump_json() if analysis_result.preconditions else None,
+                    reflection_quality_json=analysis_result.reflection_quality.model_dump_json() if analysis_result.reflection_quality else None,
+                    false_reuse_risk=analysis_result.false_reuse_risk
                 )
                 db.add(new_inc)
                 

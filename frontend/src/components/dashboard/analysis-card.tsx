@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
 export const AnalysisCard = ({ data, incidentId }: { data: AnalysisInfo; incidentId?: string }) => {
-  const [activeSubTab, setActiveSubTab] = useState<"diagnosis" | "replay" | "graph" | "postmortem" | "collab">("diagnosis");
+  const [activeSubTab, setActiveSubTab] = useState<"verification" | "diagnosis" | "replay" | "graph" | "postmortem" | "collab">("verification");
 
   // Replay Engine State
   const [isPlaying, setIsPlaying] = useState(false);
@@ -103,6 +103,7 @@ export const AnalysisCard = ({ data, incidentId }: { data: AnalysisInfo; inciden
       {/* Top Glassmorphic Navigation Cards */}
       <div className="flex gap-2 p-1.5 bg-black/60 border border-white/5 backdrop-blur-xl rounded-xl overflow-x-auto w-full">
         {[
+          { id: "verification", label: "Verification Engine", icon: ShieldAlert },
           { id: "diagnosis", label: "Incident Diagnosis", icon: Sparkles },
           { id: "replay", label: "Replay Engine", icon: History },
           { id: "graph", label: "Causal RCA Graph", icon: Network },
@@ -149,6 +150,122 @@ export const AnalysisCard = ({ data, incidentId }: { data: AnalysisInfo; inciden
         
         <CardContent className="p-6 relative z-10">
           <AnimatePresence mode="wait">
+            {/* SUB-TAB 0: VERIFICATION ENGINE */}
+            {activeSubTab === "verification" && (
+              <motion.div key="verification" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Reuse Safety Gate Panel */}
+                  <div className="bg-black/40 border border-white/10 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3">
+                      {data.safety_gate?.is_safe ? (
+                        <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">SAFE TO REUSE: YES</Badge>
+                      ) : (
+                        <Badge className="bg-rose-500/20 text-rose-400 border border-rose-500/30">SAFE TO REUSE: NO</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-white font-bold mb-4">
+                      <ShieldAlert className="w-5 h-5 text-indigo-400" />
+                      Reuse Safety Gate
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+                      {[
+                        { label: "Environment Match", val: data.safety_gate?.environment_match },
+                        { label: "Service Match", val: data.safety_gate?.service_match },
+                        { label: "Version Match", val: data.safety_gate?.service_version_match },
+                        { label: "Deployment Match", val: data.safety_gate?.deployment_version_match },
+                        { label: "Config Match", val: data.safety_gate?.config_hash_match },
+                        { label: "Region Match", val: data.safety_gate?.region_match },
+                        { label: "Dependency Match", val: data.safety_gate?.dependency_version_match },
+                        { label: "Blast Radius Match", val: data.safety_gate?.blast_radius_match }
+                      ].map((item, i) => (
+                        <div key={i} className="flex justify-between items-center p-2 rounded bg-white/5 border border-white/5">
+                          <span className="text-gray-400">{item.label}</span>
+                          {item.val ? (
+                            <span className="text-emerald-400 font-bold">PASS</span>
+                          ) : (
+                            <span className="text-rose-400 font-bold">FAIL</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Preconditions & Root Cause Integrity Panel */}
+                  <div className="space-y-6">
+                    <div className="bg-black/40 border border-white/10 rounded-2xl p-5 shadow-lg">
+                      <div className="flex items-center gap-2 text-white font-bold mb-4">
+                        <CheckCircle2 className="w-5 h-5 text-sky-400" />
+                        Resolution Preconditions
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 text-xs font-mono">
+                         {[
+                          { label: "DB Pool Healthy", val: data.preconditions?.db_pool_healthy },
+                          { label: "No Active Migrations", val: !data.preconditions?.active_migrations },
+                          { label: "No Pending Deployments", val: !data.preconditions?.pending_deployments },
+                          { label: "Cluster Healthy", val: data.preconditions?.cluster_healthy },
+                          { label: "Downstream Stable", val: data.preconditions?.downstream_stable }
+                        ].map((item, i) => (
+                          <div key={i} className="flex items-center gap-3">
+                            {item.val ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <AlertTriangle className="w-4 h-4 text-rose-400" />}
+                            <span className="text-gray-300">{item.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-black/40 border border-white/10 rounded-2xl p-5 shadow-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-2 text-white font-bold">
+                          <Activity className="w-5 h-5 text-violet-400" />
+                          Root Cause Integrity
+                        </div>
+                        <Badge variant="outline" className="text-xs">False Reuse Risk: {data.false_reuse_risk}</Badge>
+                      </div>
+                      <div className="space-y-4 text-xs font-mono">
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-gray-400">
+                            <span>Symptom Match %</span>
+                            <span className="text-white">{Math.round((data.symptom_match || 0) * 100)}%</span>
+                          </div>
+                          <Progress value={(data.symptom_match || 0) * 100} className="h-1.5 bg-white/10" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-gray-400">
+                            <span>Root Cause Match %</span>
+                            <span className="text-white">{Math.round((data.root_cause_match || 0) * 100)}%</span>
+                          </div>
+                          <Progress value={(data.root_cause_match || 0) * 100} className="h-1.5 bg-white/10" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-black/40 border border-white/10 rounded-2xl p-5 shadow-lg">
+                   <div className="flex items-center gap-2 text-white font-bold mb-4">
+                      <History className="w-5 h-5 text-amber-400" />
+                      Reflection Quality Scoring
+                   </div>
+                   <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-white/5 border border-white/10 rounded-lg p-3 text-center">
+                         <div className="text-2xl font-bold text-white mb-1">{Math.round((data.reflection_quality?.success_rate || 0) * 100)}%</div>
+                         <div className="text-xs text-gray-400 uppercase tracking-wide">Success Rate</div>
+                      </div>
+                      <div className="bg-white/5 border border-white/10 rounded-lg p-3 text-center">
+                         <div className="text-2xl font-bold text-white mb-1">{Math.round((data.reflection_quality?.recovery_speed || 0) * 100)}%</div>
+                         <div className="text-xs text-gray-400 uppercase tracking-wide">Recovery Speed</div>
+                      </div>
+                      <div className="bg-white/5 border border-white/10 rounded-lg p-3 text-center">
+                         <div className="text-2xl font-bold text-white mb-1">{Math.round((data.reflection_quality?.stability_after_fix || 0) * 100)}%</div>
+                         <div className="text-xs text-gray-400 uppercase tracking-wide">Stability Score</div>
+                      </div>
+                   </div>
+                </div>
+
+              </motion.div>
+            )}
+
             {/* SUB-TAB 1: DIAGNOSIS & EVIDENCE */}
             {activeSubTab === "diagnosis" && (
               <motion.div key="diagnosis" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">

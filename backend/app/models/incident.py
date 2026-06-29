@@ -43,6 +43,12 @@ class Incident(Base):
     deployment_correlation_json = Column(String, nullable=True)
     collaboration_notes_json = Column(String, nullable=True)
     
+    # Deterministic Engine Verification Fields
+    safety_gate_json = Column(String, nullable=True)
+    preconditions_json = Column(String, nullable=True)
+    reflection_quality_json = Column(String, nullable=True)
+    false_reuse_risk = Column(String, nullable=True)
+    
     uploaded_log = relationship("UploadedLog", back_populates="incident", uselist=False)
     resolution = relationship("Resolution", back_populates="incident", uselist=False)
     notes = relationship("EngineerNote", back_populates="incident")
